@@ -2,6 +2,7 @@ from GUI.ui_interface import *
 from GUI.py_messageBox import (MessageBox,MessageBox_confirmation,MessageBox_dialog,
                                MessageBox_enrollment,MessageBox_copy, MessageBox_Image)
 from GUI.py_toggle import PyToggle
+from GUI.Python_Circular_ProgressBar.ui_splash_screen import Ui_SplashScreen
 
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -22,6 +23,108 @@ import pyperclip
 from models.Clients import Clients, MyDelegate
 from models.Client import Client
 
+counter = 0
+jumper = 0
+
+class SplashScreen(QtWidgets.QMainWindow):
+    def __init__(self):
+        QtWidgets.QMainWindow.__init__(self)
+        self.ui = Ui_SplashScreen()
+        self.ui.setupUi(self)
+        
+        ## ==> SET INITIIAL PROGRESS BAR TO (0)
+        self.progressBarValue(0)
+        
+        self.setWindowFlags(QtCore.Qt.WindowType.FramelessWindowHint)
+        self.setAttribute(QtCore.Qt.WidgetAttribute.WA_TranslucentBackground)
+        
+        #APPLY AND DROP SHADOW effect
+        self.shadow = QtWidgets.QGraphicsDropShadowEffect(self)
+        self.shadow.setBlurRadius(20)
+        self.shadow.setXOffset(0)
+        self.shadow.setYOffset(0)
+        self.shadow.setColor(QtGui.QColor(0,0,0,120))
+        self.ui.circularBg.setGraphicsEffect(self.shadow)
+        
+        ## QTIMER ==> START
+        self.timer = QtCore.QTimer()
+        self.timer.timeout.connect(self.changeLabelLoadingInfo)
+        self.timer.start(400)
+        
+        self.timer_2 = QtCore.QTimer()
+        self.timer_2.timeout.connect(self.progress)
+        self.timer_2.start(35)
+    
+        self.show()
+
+    def changeLabelLoadingInfo(self):
+        text = self.ui.labelLoadingInfo.text()
+        if text == 'loading...':
+            self.ui.labelLoadingInfo.setText('loading')
+        elif text == 'loading':
+            self.ui.labelLoadingInfo.setText('loading.')
+        elif text == 'loading.':
+            self.ui.labelLoadingInfo.setText('loading..')
+        elif text == 'loading..':
+            self.ui.labelLoadingInfo.setText('loading...')
+        
+    # DEF TO LOANDING 
+    def progress(self):
+        global counter
+        global jumper
+        value = counter
+        
+        htmlText = """<p><span style=" font-size:68pt;">{VALUE}</span><span style=" font-size:58pt; vertical-align:super;">%</span></p>"""
+        
+        newHtml = htmlText.replace("{VALUE}", str(jumper)) # OR INT(VALUE)
+        
+        #APPLY NEW PERCENTAGE TEXT
+        if (value > jumper):
+            self.ui.labelPercentage.setText(newHtml)
+            jumper += 3
+        
+        # SET VALUE TO PROGRESS BAR
+        # fix max value error if > than 100
+        if value >= 100: value = 1.000
+        self.progressBarValue(value)
+        
+        if counter > 100:
+            self.timer.stop()
+            self.timer_2.stop()
+            
+            #SHOW MAIN WINDOW
+            self.main = MainWindow()
+            self.main.show()
+            
+            self.close()
+        
+        counter += 1
+        
+    #def progressbar value   
+    def progressBarValue(self, value):
+        # PROGRESSBAR STYLESHEET BASE
+        styleSheet = """
+        QFrame{
+            border-radius:150px;
+            background-color: qconicalgradient(cx:0.5, cy:0.5, angle:90, stop:{STOP_1} rgba(255, 0, 127, 0), stop:{STOP_2} rgba(123, 189, 255, 255));
+            }
+        """
+        
+        # GET PROGRESS BAR VALUE, CONVERT TO FLOAT AND INVERT VALUES
+        #stoop workss of 1.000 to 0.000
+        progress = (100 - value) / 100.0
+        
+        #GET NEW VALUES
+        stop_1 = str(progress - 0.001)
+        stop_2 = str(progress)
+        
+        # SET values to new stylesheet
+        
+        newStylesheet = styleSheet.replace("{STOP_1}", stop_1).replace("{STOP_2}", stop_2)
+        
+        #APPLY STYLESHEET WITH NEW VALUES
+        self.ui.circularProgress.setStyleSheet(newStylesheet)
+
 class MainWindow(QtWidgets.QMainWindow):
     def __init__(self, parent=None):
         QtWidgets.QMainWindow.__init__(self)
@@ -41,9 +144,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.timer.timeout.connect(self.autosave)
         self.timer.start(420000)
         
-        self.timer = QtCore.QTimer(self)
-        self.timer.timeout.connect(self.clients.entryConfirmation)
-        self.timer.start(300000)
+        self.timer_2 = QtCore.QTimer(self)
+        self.timer_2.timeout.connect(self.clients.entryConfirmation)
+        self.timer_2.start(300000)
         
         self.default_icon = self.ui.clientImageBtn.icon()
         self.default_image = self.default_icon.pixmap(100,100)
@@ -1120,5 +1223,5 @@ class MainWindow(QtWidgets.QMainWindow):
             
 if __name__ == '__main__':
     app = QtWidgets.QApplication(sys.argv)
-    window = MainWindow()
+    window = SplashScreen()
     sys.exit(app.exec())
