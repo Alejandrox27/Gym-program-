@@ -1125,10 +1125,11 @@ class MainWindow(QtWidgets.QMainWindow):
         this function validates the user's credentials
         """
         regex = re.compile(r'([A-Za-z0-9]+[.-_])*[A-Za-z0-9]+@[A-Za-z0-9-]+(\.[A-Z|a-z]{2,})+')
-        self.email = self.ui.emailTxt.text()
-        self.message = self.ui.questionTxt.toPlainText()
+        email = self.ui.emailTxt.text()
+        user_message = self.ui.questionTxt.toPlainText()
+        subject = self.ui.subjectTxt.text()
         
-        if len(self.email) == 0:
+        if len(email) == 0:
             pos = self.ui.emailTxt.mapToGlobal(self.ui.emailTxt.rect().topLeft())
             self.message = MessageBox_copy()
             self.message.ui.messageLbl.setText("Write your email")
@@ -1136,7 +1137,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.message.show()
             return
         
-        if not re.fullmatch(regex, self.email):
+        if not re.fullmatch(regex, email):
             pos = self.ui.emailTxt.mapToGlobal(self.ui.emailTxt.rect().topLeft())
             self.message = MessageBox_copy()
             self.message.ui.messageLbl.setText("Invalid email")
@@ -1152,7 +1153,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.message.show()
             return
         
-        if len(self.message) == 0:
+        if len(user_message) == 0:
             pos = self.ui.questionTxt.mapToGlobal(self.ui.questionTxt.rect().topLeft())
             self.message = MessageBox_copy()
             self.message.ui.messageLbl.setText("Write a message")
@@ -1160,9 +1161,8 @@ class MainWindow(QtWidgets.QMainWindow):
             self.message.show()
             return
         
-        thread = threading.Thread(target=self.sendEmail)
+        thread = threading.Thread(target=self.sendEmail, args=(email,subject,user_message,))
         thread.start()
-        
         
         self.ui.questionTxt.setPlainText('')
         self.ui.emailTxt.setText('')
@@ -1171,28 +1171,30 @@ class MainWindow(QtWidgets.QMainWindow):
         self.message = MessageBox(message = 'message sent successfully', icon = 'icons/letter_white.png')
         self.message.exec()
         
-    def sendEmail(self):
+    def sendEmail(self, email, subject, user_message):
         """
         this function sends a mail to my gmail if you want to leave a review or a question
         """
-        msg = MIMEMultipart()
-        msg['From'] = "alej.mejia89@gmail.com"
-        msg['To'] = "alej.mejia89@gmail.com"
-        msg['Subject'] = self.ui.subjectTxt.text()
+        load_dotenv()
         
-        tMessage = f'The user {self.email} has sent the next message:\n\n{self.message}'
+        msg = MIMEMultipart()
+        msg['From'] = os.getenv('USER_EMAIL')
+        msg['To'] = os.getenv('USER_EMAIL')
+        msg['Subject'] = subject
+        
+        tMessage = f'The user {email} has sent the next message:\n\n{user_message}'
         
         email = MIMEText(tMessage,"plain")
         
         msg.attach(email)
         
-        mailServer = smtplib.SMTP('smtp.gmail.com', 587)
+        mailServer = smtplib.SMTP(os.getenv('SMTP_SSL'), 587)
         mailServer.ehlo()
         mailServer.starttls()
         mailServer.ehlo()
-        mailServer.login("alej.mejia89@gmail.com", 'aphlqyvuxoxekgkh')
+        mailServer.login(os.getenv('USER_EMAIL'), os.getenv('PASSWORD_EMAIL'))
         
-        mailServer.sendmail("alej.mejia89@gmail.com", "alej.mejia89@gmail.com",msg.as_string())
+        mailServer.sendmail(os.getenv('USER_EMAIL'), os.getenv('USER_EMAIL'),msg.as_string())
         
         mailServer.close()
         
